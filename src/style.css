@@ -88,3 +88,61 @@ p {
     gap: 18px;
   }
 }
+
+#compose {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  max-width: 480px;
+}
+
+#tweet-body {
+  font: inherit;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text-h);
+  resize: vertical;
+  min-height: 64px;
+  box-sizing: border-box;
+}
+
+#compose #post {
+  align-self: flex-end;
+  font: inherit;
+  padding: 8px 20px;
+  border: none;
+  border-radius: 999px;
+  color: #fff;
+  background: var(--accent);
+  cursor: pointer;
+}
+
+#timeline {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  width: 100%;
+  max-width: 480px;
+  text-align: left;
+}
+
+.tweet {
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+}
+
+.tweet-body {
+  color: var(--text-h);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.tweet-time {
+  display: block;
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--text);
+}
