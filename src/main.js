@@ -44,18 +44,23 @@ postButton.addEventListener('click', async () => {
   const body = tweetBody.value.trim()
   if (!body) return
 
-  const { error } = await supabase
-    .from('tweets')
-    .insert({ body })
-    .select()
+  postButton.disabled = true // 連打による二重投稿を防ぐ
+  try {
+    const { error } = await supabase
+      .from('tweets')
+      .insert({ body })
+      .select()
 
-  if (error) {
-    console.error('投稿に失敗しました:', error)
-    return
+    if (error) {
+      console.error('投稿に失敗しました:', error)
+      return
+    }
+
+    tweetBody.value = ''
+    await loadTweets()
+  } finally {
+    postButton.disabled = false // 成功・失敗どちらでも必ず戻す
   }
-
-  tweetBody.value = ''
-  await loadTweets()
 })
 
 // ③ 一覧を取り出す（読む ＝ select、新しい順）
