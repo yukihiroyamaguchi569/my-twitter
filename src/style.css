@@ -120,6 +120,14 @@ p {
   cursor: pointer;
 }
 
+#draft-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--text);
+}
+
 #timeline {
   list-style: none;
   padding: 0;
@@ -145,4 +153,15 @@ p {
   margin-top: 4px;
   font-size: 13px;
   color: var(--text);
+}
+
+.tweet-draft-badge {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  color: var(--accent);
+  background: var(--accent-bg);
+  border: 1px solid var(--accent-border);
 }

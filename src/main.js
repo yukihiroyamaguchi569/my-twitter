@@ -5,10 +5,15 @@ document.querySelector('#app').innerHTML = `
   <section id="center">
     <h1>my-twitter</h1>
     <button id="login" type="button">Googleでログイン</button>
+    <button id="logout" type="button" style="display: none;">サインアウト</button>
     <p id="user-info"></p>
 
     <div id="compose">
       <textarea id="tweet-body" placeholder="いまどうしてる？"></textarea>
+      <label id="draft-option">
+        <input id="is-draft" type="checkbox" />
+        下書きとして投稿（自分にしか見えない）
+      </label>
       <button id="post" type="button">ポスト</button>
     </div>
 
@@ -17,8 +22,10 @@ document.querySelector('#app').innerHTML = `
 `
 
 const loginButton = document.querySelector('#login')
+const logoutButton = document.querySelector('#logout')
 const userInfo = document.querySelector('#user-info')
 const tweetBody = document.querySelector('#tweet-body')
+const isDraftCheckbox = document.querySelector('#is-draft')
 const postButton = document.querySelector('#post')
 const timeline = document.querySelector('#timeline')
 
@@ -29,13 +36,22 @@ loginButton.addEventListener('click', async () => {
   })
 })
 
+logoutButton.addEventListener('click', async () => {
+  await supabase.auth.signOut()
+  await showCurrentUser()
+  await loadTweets()
+})
+
 async function showCurrentUser() {
   const { data: { user } } = await supabase.auth.getUser()
   if (user) {
     userInfo.textContent = `ログイン中: ${user.email}`
     loginButton.style.display = 'none'
+    logoutButton.style.display = ''
   } else {
     userInfo.textContent = 'ログインしていません'
+    loginButton.style.display = ''
+    logoutButton.style.display = 'none'
   }
 }
 
@@ -48,7 +64,7 @@ postButton.addEventListener('click', async () => {
   try {
     const { error } = await supabase
       .from('tweets')
-      .insert({ body })
+      .insert({ body, is_public: !isDraftCheckbox.checked })
       .select()
 
     if (error) {
@@ -57,6 +73,7 @@ postButton.addEventListener('click', async () => {
     }
 
     tweetBody.value = ''
+    isDraftCheckbox.checked = false
     await loadTweets()
   } finally {
     postButton.disabled = false // 成功・失敗どちらでも必ず戻す
@@ -93,6 +110,14 @@ function renderTweets(tweets) {
     time.textContent = new Date(tweet.created_at).toLocaleString()
 
     li.append(body, time)
+
+    if (!tweet.is_public) {
+      const badge = document.createElement('span')
+      badge.className = 'tweet-draft-badge'
+      badge.textContent = '下書き（自分にしか見えません）'
+      li.append(badge)
+    }
+
     timeline.append(li)
   }
 }
