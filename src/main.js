@@ -29,6 +29,9 @@ const isDraftCheckbox = document.querySelector('#is-draft')
 const postButton = document.querySelector('#post')
 const timeline = document.querySelector('#timeline')
 
+let currentUserId = null
+let followingIds = new Set()
+
 loginButton.addEventListener('click', async () => {
   await supabase.auth.signInWithOAuth({
     provider: 'google',
@@ -39,20 +42,69 @@ loginButton.addEventListener('click', async () => {
 logoutButton.addEventListener('click', async () => {
   await supabase.auth.signOut()
   await showCurrentUser()
+  await loadFollowing()
   await loadTweets()
 })
 
 async function showCurrentUser() {
   const { data: { user } } = await supabase.auth.getUser()
   if (user) {
+    currentUserId = user.id
     userInfo.textContent = `ログイン中: ${user.email}`
     loginButton.style.display = 'none'
     logoutButton.style.display = ''
   } else {
+    currentUserId = null
     userInfo.textContent = 'ログインしていません'
     loginButton.style.display = ''
     logoutButton.style.display = 'none'
   }
+}
+
+// ④ 自分がフォロー中のuser_id一覧を取得
+async function loadFollowing() {
+  if (!currentUserId) {
+    followingIds = new Set()
+    return
+  }
+
+  const { data, error } = await supabase
+    .from('follows')
+    .select('followee_id')
+    .eq('follower_id', currentUserId)
+
+  if (error) {
+    console.error('フォロー一覧の取得に失敗しました:', error)
+    return
+  }
+
+  followingIds = new Set(data.map((row) => row.followee_id))
+}
+
+async function toggleFollow(followeeId) {
+  if (followingIds.has(followeeId)) {
+    const { error } = await supabase
+      .from('follows')
+      .delete()
+      .eq('followee_id', followeeId)
+
+    if (error) {
+      console.error('アンフォローに失敗しました:', error)
+      return
+    }
+  } else {
+    const { error } = await supabase
+      .from('follows')
+      .insert({ followee_id: followeeId })
+
+    if (error) {
+      console.error('フォローに失敗しました:', error)
+      return
+    }
+  }
+
+  await loadFollowing()
+  await loadTweets()
 }
 
 // ② 投稿する（1行 追加 ＝ insert）
@@ -101,6 +153,10 @@ function renderTweets(tweets) {
     const li = document.createElement('li')
     li.className = 'tweet'
 
+    const author = document.createElement('p')
+    author.className = 'tweet-author'
+    author.textContent = `投稿者ID: ${tweet.user_id}`
+
     const body = document.createElement('p')
     body.className = 'tweet-body'
     body.textContent = tweet.body // XSS対策のため textContent で挿入
@@ -109,7 +165,7 @@ function renderTweets(tweets) {
     time.className = 'tweet-time'
     time.textContent = new Date(tweet.created_at).toLocaleString()
 
-    li.append(body, time)
+    li.append(author, body, time)
 
     if (!tweet.is_public) {
       const badge = document.createElement('span')
@@ -118,9 +174,24 @@ function renderTweets(tweets) {
       li.append(badge)
     }
 
+    if (currentUserId && tweet.user_id !== currentUserId) {
+      const followButton = document.createElement('button')
+      followButton.type = 'button'
+      followButton.className = 'tweet-follow-button'
+      const isFollowing = followingIds.has(tweet.user_id)
+      followButton.textContent = isFollowing ? 'フォロー中' : 'フォロー'
+      followButton.addEventListener('click', () => toggleFollow(tweet.user_id))
+      li.append(followButton)
+    }
+
     timeline.append(li)
   }
 }
 
-showCurrentUser()
-loadTweets()
+async function init() {
+  await showCurrentUser()
+  await loadFollowing()
+  await loadTweets()
+}
+
+init()
