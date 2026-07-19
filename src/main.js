@@ -17,6 +17,10 @@ document.querySelector('#app').innerHTML = `
       <button id="post" type="button">ポスト</button>
     </div>
 
+    <div id="timeline-tabs">
+      <button id="tab-all" type="button" class="tab-button active">みんな</button>
+      <button id="tab-home" type="button" class="tab-button">ホーム（フォロー中）</button>
+    </div>
     <ul id="timeline"></ul>
   </section>
 `
@@ -28,9 +32,26 @@ const tweetBody = document.querySelector('#tweet-body')
 const isDraftCheckbox = document.querySelector('#is-draft')
 const postButton = document.querySelector('#post')
 const timeline = document.querySelector('#timeline')
+const tabAllButton = document.querySelector('#tab-all')
+const tabHomeButton = document.querySelector('#tab-home')
 
 let currentUserId = null
 let followingIds = new Set()
+let currentView = 'all' // 'all' | 'home'
+
+tabAllButton.addEventListener('click', () => {
+  currentView = 'all'
+  tabAllButton.classList.add('active')
+  tabHomeButton.classList.remove('active')
+  loadTweets()
+})
+
+tabHomeButton.addEventListener('click', () => {
+  currentView = 'home'
+  tabHomeButton.classList.add('active')
+  tabAllButton.classList.remove('active')
+  loadTweets()
+})
 
 loginButton.addEventListener('click', async () => {
   await supabase.auth.signInWithOAuth({
@@ -134,6 +155,11 @@ postButton.addEventListener('click', async () => {
 
 // ③ 一覧を取り出す（読む ＝ select、新しい順）
 async function loadTweets() {
+  if (currentView === 'home') {
+    await loadHomeTimeline()
+    return
+  }
+
   const { data, error } = await supabase
     .from('tweets')
     .select('*')
@@ -141,6 +167,30 @@ async function loadTweets() {
 
   if (error) {
     console.error('取得に失敗しました:', error)
+    return
+  }
+
+  renderTweets(data)
+}
+
+// ⑤ ホームタイムライン（フォロー中の人 ＋ 自分の投稿だけ、新しい順）
+async function loadHomeTimeline() {
+  const ids = [...followingIds]
+  if (currentUserId) ids.push(currentUserId)
+
+  if (ids.length === 0) {
+    renderTweets([]) // だれもフォローしていない・未ログインならホームは空
+    return
+  }
+
+  const { data, error } = await supabase
+    .from('tweets')
+    .select('*')
+    .in('user_id', ids)
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    console.error('ホームタイムラインの取得に失敗しました:', error)
     return
   }
 
